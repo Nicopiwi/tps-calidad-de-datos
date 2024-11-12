@@ -1,7 +1,5 @@
 import pandas as pd
-from mpl_toolkits.basemap import Basemap
-import geopandas as gpd
-import numpy as np
+import matplotlib.pyplot as plt
 import matplotlib.pyplot as plt
 from xlrd import open_workbook
 
@@ -158,21 +156,17 @@ country_dict['United States of America'] = 'USA'
 country_dict[''] = 'Blank'
 country_dict['ENGLAND'] = 'UNITED KINGDOM'
 country_dict['HONG KONG'] = 'HONG KONG' # China?
-country_dict['PACIFIC OCEAN'] = 'PACIFIC OCEAN' 
-country_dict['ATLANTIC OCEAN'] = 'ATLANTIC OCEAN'
-country_dict['INDIAN OCEAN'] = 'INDIAN OCEAN'
-country_dict['CARIBBEAN SEA'] = 'CARIBBEAN SEA'
 country_dict['COLUMBIA'] = 'COLUMBIA'
 country_dict['SCOTLAND'] = 'SCOTLAND'
 
-df['Matched Country'] = df['Country'].map(country_dict).fillna('NO MATCH')
-df.loc[df['Country'].str.contains('/'), 'Matched Country'] = "NON-IDENTIFIABLE"
+df['Matched Country'] = df['Country'].map(country_dict).fillna('NON-IDENTIFIABLE')
+df.loc[df['Country'].str.contains('/'), 'Matched Country'] = 'NON-IDENTIFIABLE'
 
 stats['Countries'] = len(country_list)  # Number of Countries (unique countries from country_list)
 stats['Islands'] = len(country_dict) - len(country_list)  # Number of Islands (keys in country_dict)
-stats['Matched Countries/Islands'] = (df['Matched Country'] != 'NO MATCH').sum()
+stats['Matched Countries/Islands'] = (df['Matched Country'] != 'NON-IDENTIFIABLE').sum()
 stats['Countries Left After Matching'] = df['Matched Country'].nunique()
-stats['Countries Not Matched'] = (~(df['Matched Country'] != 'NO MATCH')).sum()
+stats['Countries Not Matched'] = (~(df['Matched Country'] != 'NON-IDENTIFIABLE')).sum()
 stats['Null Countries'] = (df['Country'] == '').sum()
 
 # (STEP) Match Types and Incident Types (Color) - Type Matching Stats
@@ -205,8 +199,8 @@ print(f"Valores unicos luego de matchear: {stats['Countries Left After Matching'
 
 print()
 
-top_countries = df[df['Matched Country'] != 'NO MATCH']['Matched Country'].value_counts().head(20)
-no_match_rows = df[df['Matched Country'] == 'NO MATCH']
+top_countries = df[df['Matched Country'] != 'NON-IDENTIFIABLE']['Matched Country'].value_counts().head(20)
+no_match_rows = df[df['Matched Country'] == 'NON-IDENTIFIABLE']
 
 print("Top 20 paises con mayores casos")
 print(top_countries)
@@ -288,41 +282,4 @@ plt.xticks(rotation=45, ha='right')
 
 plt.tight_layout()
 plt.savefig('./top_countries.png')
-plt.close()
-
-# Load the world shapefile
-url = "./ne_110m_admin_0_countries.zip"
-world = gpd.read_file(url)
-
-country_counts = df['Matched Country'].value_counts().reset_index()
-country_counts.columns = ['Matched Country', 'EventCount']
-country_dict = dict(zip(country_counts['Matched Country'], country_counts['EventCount']))
-
-fig, ax = plt.subplots(figsize=(15, 10))
-
-m = Basemap(projection='robin', resolution='c', lat_0=0, lon_0=0)
-
-# Draw coastlines and countries
-m.drawcoastlines()
-m.drawcountries()
-
-# Draw the map boundaries and fill color
-m.drawmapboundary(fill_color='lightblue')
-m.fillcontinents(color='lightgreen', lake_color='lightblue')
-
-# Iterate through each country in the shapefile
-for _, row in world.iterrows():
-    country_name = row['SOVEREIGNT'].upper()
-    print(country_name)
-    if country_name in country_dict:
-        # Get the centroid coordinates of the country
-        centroid = row['geometry'].centroid
-        lat, lon = centroid.y, centroid.x
-        
-        x, y = m(lon, lat)
-        
-        ax.text(x, y, str(country_dict[country_name]), fontsize=8, ha='center', color='black')
-
-plt.title('World Map of Event Counts')
-plt.savefig('./world_map.png')
 plt.close()

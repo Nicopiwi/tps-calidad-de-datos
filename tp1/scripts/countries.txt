@@ -6,6 +6,7 @@ Angola
 Antigua & Deps
 Argentina
 Armenia
+Aruba
 Australia
 Austria
 Azerbaijan
@@ -39,12 +40,14 @@ Colombia
 Comoros
 Congo
 Congo {Democratic Rep}
+Cook Islands
 Costa Rica
 Croatia
 Cuba
 Cyprus
 Czech Republic
 Denmark
+DANISH REALM (KINGDOM OF DENMARK)
 Djibouti
 Dominica
 Dominican Republic
@@ -56,6 +59,7 @@ Equatorial Guinea
 Eritrea
 Estonia
 Ethiopia
+Federated States of Micronesia
 Fiji
 Finland
 France

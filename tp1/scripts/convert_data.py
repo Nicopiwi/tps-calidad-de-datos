@@ -199,7 +199,7 @@ print(f"Numero de paises (segun lista .txt): {stats['Countries']}")
 print(f"Total de islas/paises matcheados: {stats['Matched Countries/Islands']}")
 print(f"Total de casos sin matchear: {stats['Countries Not Matched']}")
 print(f"Total de casos en blanco: {stats['Null Countries']}")
-print(f"Valores unicos en columna 'Country' antes de limpiar: {stats["Unique Countries"]}")
+print(f"Valores unicos en columna 'Country' antes de limpiar: {stats['Unique Countries']}")
 print(f"Valores unicos luego de matchear: {stats['Countries Left After Matching']}")
 
 print()

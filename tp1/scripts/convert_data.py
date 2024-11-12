@@ -166,6 +166,7 @@ country_dict['COLUMBIA'] = 'COLUMBIA'
 country_dict['SCOTLAND'] = 'SCOTLAND'
 
 df['Matched Country'] = df['Country'].map(country_dict).fillna('NO MATCH')
+df.loc[df['Country'].str.contains('/'), 'Matched Country'] = "NON-IDENTIFIABLE"
 
 stats['Countries'] = len(country_list)  # Number of Countries (unique countries from country_list)
 stats['Islands'] = len(country_dict) - len(country_list)  # Number of Islands (keys in country_dict)

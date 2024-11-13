@@ -6,3 +6,6 @@
 .~lock**
 
 prueba
+
+*.png
+script_data.csv

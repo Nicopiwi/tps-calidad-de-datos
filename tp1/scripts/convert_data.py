@@ -1,4 +1,5 @@
 #%%
+import seaborn as sns
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.pyplot as plt
@@ -138,6 +139,7 @@ def autopct_func(pct):
 def normalize_rgb(rgb):
     return tuple(c / 255 for c in rgb)
 
+# ------
 # Pie Chart for Matched Types Distribution with normalized colors
 matched_type_labels, matched_type_counts = zip(*stats['Final Matched Types'].items())
 explode = [0.05] * len(matched_type_labels)  # Slightly "explode" each slice for visibility
@@ -159,6 +161,8 @@ plt.tight_layout()
 
 plt.savefig('./pie_chart1.png')
 plt.close()
+# ------
+
 #%%
 # (STEP) Remove Empty Columns
 initial_cols = df.shape[1]
@@ -172,7 +176,6 @@ df = df.dropna(how='all')
 stats['Remaining Rows'] = df.shape[0]
 
 # (STEP) Profile completeness all three "important" values are empty (Country, Type, and Incident Type (color))
-
 # Joint proportion of cases where the values of Date, Year, Country, Name are unique 
 stats["Unique Cases"] = df[['Date', 'Year', 'Country', 'Name']].drop_duplicates().shape[0] / df.shape[0] * 100
 
@@ -252,7 +255,12 @@ stats['Type Mismatches'] = (df['Matched Type'] == MISMATCH).sum()
 stats['Final Matched Types'] = df['Matched Type'].value_counts().to_dict()
 
 # (STEP) Save to CSV
-df.to_csv('./script_data.csv', index=False)
+# Reorder columns to place 'Matched Country' first, and 'Matched Incident' second
+column_order = ['Matched Country', 'Matched Type'] + [col for col in df.columns if col not in ['Matched Country', 'Matched Type']]
+df = df[column_order]
+
+# Optionally, save the modified dataframe to a CSV
+df.to_csv('script_data.csv', index=False)
 
 # Display statistics for rows, columns, and mismatches
 print(f"Numero de islas (segun excel): {stats['Islands']}")
@@ -350,67 +358,7 @@ plt.tight_layout()
 plt.savefig('./top_countries.png')
 plt.close()
 
-# Load the world shapefile
-url = "./ne_110m_admin_0_countries.zip"
-world = gpd.read_file(url)
-
-country_counts = df['Matched Country'].value_counts().reset_index()
-country_counts.columns = ['Matched Country', 'EventCount']
-country_dict = dict(zip(country_counts['Matched Country'], country_counts['EventCount']))
-
-fig, ax = plt.subplots(figsize=(15, 10))
-
-m = Basemap(projection='robin', resolution='c', lat_0=0, lon_0=0)
-
-# Draw coastlines and countries
-m.drawcoastlines()
-m.drawcountries()
-
-# Draw the map boundaries and fill color
-m.drawmapboundary(fill_color='lightblue')
-m.fillcontinents(color='lightgreen', lake_color='lightblue')
-
-# Iterate through each country in the shapefile
-for _, row in world.iterrows():
-    country_name = row['SOVEREIGNT'].upper()
-    print(country_name)
-    if country_name in country_dict:
-        # Get the centroid coordinates of the country
-        centroid = row['geometry'].centroid
-        lat, lon = centroid.y, centroid.x
-        
-        x, y = m(lon, lat)
-        
-        ax.text(x, y, str(country_dict[country_name]), fontsize=8, ha='center', color='black')
-
-plt.title('World Map of Event Counts')
-plt.savefig('./world_map.png')
-plt.close()
 # %%
-#world = gpd.read_file(gpd.datasets.get_path('naturalearth_lowres'))
-
-country_counts = df['Matched Country'].value_counts().reset_index()
-country_counts.columns = ['Matched Country', 'EventCount']
-
-# Merge the incidents data with the world shapefile on country names
-world['SOVEREIGNT'] = world['SOVEREIGNT'].str.upper()
-merged = world.merge(country_counts, how='left', left_on='SOVEREIGNT', right_on='Matched Country')
-merged['EventCount'] = merged['EventCount'].fillna(0)  # Fill missing counts with 0
-
-# Plot the map
-fig, ax = plt.subplots(1, 1, figsize=(15, 10))
-merged.plot(column='EventCount', cmap='YlOrRd', linewidth=0.8, ax=ax, edgecolor='0.8', legend=True)
-
-# Customize the plot
-ax.set_title('World Map of Event Counts')
-ax.set_axis_off()
-
-# Save the plot as an image
-plt.savefig('./world_map2.png')
-plt.show()
-# %%
-import seaborn as sns
-
 # Assuming `df` is your incidents DataFrame with a column 'Matched Country'
 # Calculate the number of incidents per country
 country_counts = df['Matched Country'].value_counts().reset_index()
@@ -429,7 +377,7 @@ plt.tight_layout()
 
 # Save the plot as an image
 plt.savefig('./top_10_countries_barplot.png')
-plt.show()
+plt.close()
 # %%
 # Group by country and incident type and count occurrences
 country_type_counts = df.groupby(['Matched Country', 'Matched Type']).size().unstack(fill_value=0)
@@ -447,8 +395,7 @@ plt.title('Número de incidentes por tipo y por país (Top 10 Countries)')
 plt.legend(title='Tipo de incidentes')
 plt.tight_layout()
 plt.savefig('./incidents_stacked_barplot.png')
-plt.show()
-
+plt.close()
 #%%
 country_type_counts = df.groupby(['Matched Country', 'Matched Type']).size().unstack(fill_value=0)
 
@@ -471,6 +418,29 @@ plt.title('Número de incidentes por tipo y por país (Top 10 Paises)')
 plt.legend(title='Tipo de incidentes')
 plt.tight_layout()
 plt.savefig('./incidents_stacked_barplot.png')
-plt.show()
-# %%
 plt.close()
+# %%c
+
+# Group and process the data
+country_type_counts = df.groupby(['Matched Country', 'Matched Type']).size().unstack(fill_value=0)
+
+# Add a 'Number of Incidents' column with the total incidents per country
+country_type_counts['Number of Incidents'] = country_type_counts.sum(axis=1)
+
+# Reorder columns so 'Country' is first, 'Number of Incidents' is second, and incident types follow
+country_type_counts = country_type_counts.reset_index()
+column_order = ['Matched Country', 'Number of Incidents'] + [col for col in country_type_counts.columns if col not in ['Matched Country', 'Number of Incidents']]
+country_type_counts = country_type_counts[column_order]
+
+# Rename columns
+country_type_counts.rename(columns={'Matched Country': 'País'}, inplace=True)
+
+# Create a mapping for incident types to letters
+incident_types = [col for col in country_type_counts.columns if col not in ['País', 'Number of Incidents']]
+incident_type_mapping = {incident_types[i]: chr(65 + i) for i in range(len(incident_types))}
+
+# Rename columns based on the mapping
+country_type_counts.rename(columns=incident_type_mapping, inplace=True)
+
+# Save the CSV file
+country_type_counts.to_csv('country_incidents_summary.csv', index=False)

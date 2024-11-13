@@ -1,10 +1,11 @@
+#%%
 import pandas as pd
 from mpl_toolkits.basemap import Basemap
 import geopandas as gpd
 import numpy as np
 import matplotlib.pyplot as plt
 from xlrd import open_workbook
-
+#%%
 # Load workbook and default sheet
 wb = open_workbook('initial_data.xls', formatting_info=True)
 default_sheet = wb.sheet_by_index(0)
@@ -75,7 +76,7 @@ info_graph_color = {
 }
 
 stats = {}
-
+#%%
 # (STEP) Initial Data Loading
 data = []
 for row in range(default_sheet.nrows):
@@ -107,6 +108,60 @@ df['Incident Type (color)'] = incident_types_col
 # (STEP) Remove First Two Rows (Headers or Redundant Rows)
 df = df.drop(index=[0, 1]).reset_index(drop=True)
 
+countries_null = (df['Country'].isna() | (df['Country'] == '')).sum() / df.shape[0] * 100
+types_null = (df['Type'].isna() | (df['Type'] == '')).sum() / df.shape[0] * 100
+incident_types_null = (df['Incident Type (color)'] == incident_types_names[BLANK]).sum() / df.shape[0] * 100
+
+print(f"Porcentaje de valores no nulos en 'Country': {100-countries_null:.2f}%")
+print(f"Porcentaje de valores no nulos en 'Type': {100-types_null:.2f}%")
+print(f"Porcentaje de valores no nulos en 'Incident Type (color)': {100-incident_types_null:.2f}%")
+#%%
+# (STEP) Match Types and Incident Types (Color) - Type Matching Stats
+def match_incident_types(df):
+    def match_type(row):
+        type_value = type_and_color_matching.get(row['Type'], MISMATCH)
+        color_value = row['Incident Type (color)']
+        
+        return type_value if type_value == color_value else MISMATCH
+    
+    df['Matched Type'] = df.apply(match_type, axis=1)
+    return df
+
+df = match_incident_types(df)
+stats['Type Matches'] = (df['Matched Type'] != MISMATCH).sum()
+stats['Type Mismatches'] = (df['Matched Type'] == MISMATCH).sum()
+stats['Final Matched Types'] = df['Matched Type'].value_counts().to_dict()
+
+# Function to display percentages only for slices larger than 3%
+def autopct_func(pct):
+    return f'{pct:.1f}%' if pct > 3 else ''
+
+# Normalize RGB colors to the range [0, 1]
+def normalize_rgb(rgb):
+    return tuple(c / 255 for c in rgb)
+
+# Pie Chart for Matched Types Distribution with normalized colors
+matched_type_labels, matched_type_counts = zip(*stats['Final Matched Types'].items())
+explode = [0.05] * len(matched_type_labels)  # Slightly "explode" each slice for visibility
+
+# Extract normalized colors from info_graph_color for the pie chart
+pie_chart_colors = [normalize_rgb(info_graph_color[type_]) for type_ in matched_type_labels]
+
+total_count = sum(matched_type_counts)
+legend_labels = [f"{label} ({(count / total_count) * 100:.1f}%)" for label, count in zip(matched_type_labels, matched_type_counts)]
+
+plt.figure(figsize=(8, 8))
+plt.pie(
+    matched_type_counts, labels=[None] * len(matched_type_labels), autopct=autopct_func, 
+    startangle=140, explode=explode, colors=pie_chart_colors, textprops={'fontsize': 10}
+)
+plt.title('Tipos de incidentes (matcheados)', fontsize=14)
+plt.legend(legend_labels, title="Incident Types")
+plt.tight_layout()
+
+plt.savefig('./pie_chart1.png')
+plt.close()
+#%%
 # (STEP) Remove Empty Columns
 initial_cols = df.shape[1]
 df = df.loc[:, (df != '').any(axis=0)]
@@ -118,15 +173,23 @@ initial_rows = df.shape[0]
 df = df.dropna(how='all')
 stats['Remaining Rows'] = df.shape[0]
 
+# (STEP) Profile completeness all three "important" values are empty (Country, Type, and Incident Type (color))
+
+# Joint proportion of cases where the values of Date, Year, Country, Name are unique 
+stats["Unique Cases"] = df[['Date', 'Year', 'Country', 'Name']].drop_duplicates().shape[0] / df.shape[0] * 100
+
 # (STEP) Remove rows where all three "important" values are empty (Country, Type, and Incident Type (color))
 df = df[~((df['Country'].isna() | (df['Country'] == '')) & 
           (df['Type'].isna() | (df['Type'] == '')) & 
           (df['Incident Type (color)'] == incident_types_names[BLANK]))]
 stats['Remaining Rows Empty'] = df.shape[0]
 
+df = df.drop_duplicates(subset=['Date', 'Year', 'Country', 'Name'])
+
 # Reset the index after filtering rows
 df = df.reset_index(drop=True)
 
+#%%
 # (STEP) Normalize, Lowercase, and Strip Country Column
 df['Country'] = (
     df['Country']
@@ -165,13 +228,16 @@ country_dict['CARIBBEAN SEA'] = 'CARIBBEAN SEA'
 country_dict['COLUMBIA'] = 'COLUMBIA'
 country_dict['SCOTLAND'] = 'SCOTLAND'
 
+stats['Cases with valid countries'] = df['Country'].isin(country_dict).sum()/df.shape[0] * 100
+stats['Cases with islands'] = df['Country'].isin(country_dict).sum() / df.shape[0] * 100
+
 df['Matched Country'] = df['Country'].map(country_dict).fillna('NO MATCH')
 
 stats['Countries'] = len(country_list)  # Number of Countries (unique countries from country_list)
 stats['Islands'] = len(country_dict) - len(country_list)  # Number of Islands (keys in country_dict)
 stats['Matched Countries/Islands'] = (df['Matched Country'] != 'NO MATCH').sum()
 stats['Countries Left After Matching'] = df['Matched Country'].nunique()
-stats['Countries Not Matched'] = (~(df['Matched Country'] != 'NO MATCH')).sum()
+stats['Cases where Countries Not Matched'] = (~(df['Matched Country'] != 'NO MATCH')).sum()
 stats['Null Countries'] = (df['Country'] == '').sum()
 
 # (STEP) Match Types and Incident Types (Color) - Type Matching Stats
@@ -197,7 +263,7 @@ df.to_csv('./script_data.csv', index=False)
 print(f"Numero de islas (segun excel): {stats['Islands']}")
 print(f"Numero de paises (segun lista .txt): {stats['Countries']}")
 print(f"Total de islas/paises matcheados: {stats['Matched Countries/Islands']}")
-print(f"Total de casos sin matchear: {stats['Countries Not Matched']}")
+print(f"Total de casos sin matchear: {stats['Cases where Countries Not Matched']}")
 print(f"Total de casos en blanco: {stats['Null Countries']}")
 print(f"Valores unicos en columna 'Country' antes de limpiar: {stats['Unique Countries']}")
 print(f"Valores unicos luego de matchear: {stats['Countries Left After Matching']}")
@@ -325,3 +391,90 @@ for _, row in world.iterrows():
 plt.title('World Map of Event Counts')
 plt.savefig('./world_map.png')
 plt.close()
+# %%
+#world = gpd.read_file(gpd.datasets.get_path('naturalearth_lowres'))
+
+country_counts = df['Matched Country'].value_counts().reset_index()
+country_counts.columns = ['Matched Country', 'EventCount']
+
+# Merge the incidents data with the world shapefile on country names
+world['SOVEREIGNT'] = world['SOVEREIGNT'].str.upper()
+merged = world.merge(country_counts, how='left', left_on='SOVEREIGNT', right_on='Matched Country')
+merged['EventCount'] = merged['EventCount'].fillna(0)  # Fill missing counts with 0
+
+# Plot the map
+fig, ax = plt.subplots(1, 1, figsize=(15, 10))
+merged.plot(column='EventCount', cmap='YlOrRd', linewidth=0.8, ax=ax, edgecolor='0.8', legend=True)
+
+# Customize the plot
+ax.set_title('World Map of Event Counts')
+ax.set_axis_off()
+
+# Save the plot as an image
+plt.savefig('./world_map2.png')
+plt.show()
+# %%
+import seaborn as sns
+
+# Assuming `df` is your incidents DataFrame with a column 'Matched Country'
+# Calculate the number of incidents per country
+country_counts = df['Matched Country'].value_counts().reset_index()
+country_counts.columns = ['Country', 'EventCount']
+
+# Select the top 10 countries
+top_10_countries = country_counts.head(10)
+
+# Plot
+plt.figure(figsize=(10, 6))
+sns.barplot(x='EventCount', y='Country', data=top_10_countries, palette='viridis')
+plt.xlabel('Number of Incidents')
+plt.ylabel('Country')
+plt.title('Top 10 Countries by Number of Incidents')
+plt.tight_layout()
+
+# Save the plot as an image
+plt.savefig('./top_10_countries_barplot.png')
+plt.show()
+# %%
+# Group by country and incident type and count occurrences
+country_type_counts = df.groupby(['Matched Country', 'Matched Type']).size().unstack(fill_value=0)
+
+# Plot stacked bar chart
+top_countries = country_type_counts.sum(axis=1).nlargest(10).index
+
+# Filter the `country_type_counts` DataFrame to include only the top 10 countries
+country_type_counts_top10 = country_type_counts.loc[top_countries]
+country_type_counts_top10.plot(kind='bar', stacked=True, figsize=(12, 8), colormap='tab20')
+
+plt.xlabel('País')
+plt.ylabel('Cantidad de Incidentes')
+plt.title('Número de incidentes por tipo y por país (Top 10 Countries)')
+plt.legend(title='Tipo de incidentes')
+plt.tight_layout()
+plt.savefig('./incidents_stacked_barplot.png')
+plt.show()
+
+#%%
+country_type_counts = df.groupby(['Matched Country', 'Matched Type']).size().unstack(fill_value=0)
+
+# Calculate total counts per incident type across all countries and sort by this total
+sorted_types = country_type_counts.sum(axis=0).sort_values(ascending=False).index
+
+# Reorder columns in `country_type_counts` to match the sorted order
+country_type_counts = country_type_counts[sorted_types]
+
+# Select the top 10 countries with the most incidents (sorted by total incidents)
+top_countries = country_type_counts.sum(axis=1).nlargest(10).index
+country_type_counts_top10 = country_type_counts.loc[top_countries]
+
+# Plot the stacked bar plot
+country_type_counts_top10.plot(kind='bar', stacked=True, figsize=(12, 8), colormap='tab20')
+
+plt.xlabel('País')
+plt.ylabel('Cantidad de Incidentes')
+plt.title('Número de incidentes por tipo y por país (Top 10 Paises)')
+plt.legend(title='Tipo de incidentes')
+plt.tight_layout()
+plt.savefig('./incidents_stacked_barplot.png')
+plt.show()
+# %%

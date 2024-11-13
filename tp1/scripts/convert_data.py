@@ -1,8 +1,6 @@
 #%%
 import pandas as pd
-from mpl_toolkits.basemap import Basemap
-import geopandas as gpd
-import numpy as np
+import matplotlib.pyplot as plt
 import matplotlib.pyplot as plt
 from xlrd import open_workbook
 #%%
@@ -221,21 +219,18 @@ country_dict['United States of America'] = 'USA'
 country_dict[''] = 'Blank'
 country_dict['ENGLAND'] = 'UNITED KINGDOM'
 country_dict['HONG KONG'] = 'HONG KONG' # China?
-country_dict['PACIFIC OCEAN'] = 'PACIFIC OCEAN' 
-country_dict['ATLANTIC OCEAN'] = 'ATLANTIC OCEAN'
-country_dict['INDIAN OCEAN'] = 'INDIAN OCEAN'
-country_dict['CARIBBEAN SEA'] = 'CARIBBEAN SEA'
 country_dict['COLUMBIA'] = 'COLUMBIA'
 country_dict['SCOTLAND'] = 'SCOTLAND'
 
 stats['Cases with valid countries'] = df['Country'].isin(country_dict).sum()/df.shape[0] * 100
 stats['Cases with islands'] = df['Country'].isin(country_dict).sum() / df.shape[0] * 100
 
-df['Matched Country'] = df['Country'].map(country_dict).fillna('NO MATCH')
+df['Matched Country'] = df['Country'].map(country_dict).fillna('NON-IDENTIFIABLE')
+df.loc[df['Country'].str.contains('/'), 'Matched Country'] = 'NON-IDENTIFIABLE'
 
 stats['Countries'] = len(country_list)  # Number of Countries (unique countries from country_list)
 stats['Islands'] = len(country_dict) - len(country_list)  # Number of Islands (keys in country_dict)
-stats['Matched Countries/Islands'] = (df['Matched Country'] != 'NO MATCH').sum()
+stats['Matched Countries/Islands'] = (df['Matched Country'] != 'NON-IDENTIFIABLE').sum()
 stats['Countries Left After Matching'] = df['Matched Country'].nunique()
 stats['Cases where Countries Not Matched'] = (~(df['Matched Country'] != 'NO MATCH')).sum()
 stats['Null Countries'] = (df['Country'] == '').sum()
@@ -270,8 +265,8 @@ print(f"Valores unicos luego de matchear: {stats['Countries Left After Matching'
 
 print()
 
-top_countries = df[df['Matched Country'] != 'NO MATCH']['Matched Country'].value_counts().head(20)
-no_match_rows = df[df['Matched Country'] == 'NO MATCH']
+top_countries = df[df['Matched Country'] != 'NON-IDENTIFIABLE']['Matched Country'].value_counts().head(20)
+no_match_rows = df[df['Matched Country'] == 'NON-IDENTIFIABLE']
 
 print("Top 20 paises con mayores casos")
 print(top_countries)
@@ -478,3 +473,4 @@ plt.tight_layout()
 plt.savefig('./incidents_stacked_barplot.png')
 plt.show()
 # %%
+plt.close()

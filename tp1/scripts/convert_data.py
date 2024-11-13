@@ -131,38 +131,6 @@ stats['Type Matches'] = (df['Matched Type'] != MISMATCH).sum()
 stats['Type Mismatches'] = (df['Matched Type'] == MISMATCH).sum()
 stats['Final Matched Types'] = df['Matched Type'].value_counts().to_dict()
 
-# Function to display percentages only for slices larger than 3%
-def autopct_func(pct):
-    return f'{pct:.1f}%' if pct > 3 else ''
-
-# Normalize RGB colors to the range [0, 1]
-def normalize_rgb(rgb):
-    return tuple(c / 255 for c in rgb)
-
-# ------
-# Pie Chart for Matched Types Distribution with normalized colors
-matched_type_labels, matched_type_counts = zip(*stats['Final Matched Types'].items())
-explode = [0.05] * len(matched_type_labels)  # Slightly "explode" each slice for visibility
-
-# Extract normalized colors from info_graph_color for the pie chart
-pie_chart_colors = [normalize_rgb(info_graph_color[type_]) for type_ in matched_type_labels]
-
-total_count = sum(matched_type_counts)
-legend_labels = [f"{label} ({(count / total_count) * 100:.1f}%)" for label, count in zip(matched_type_labels, matched_type_counts)]
-
-plt.figure(figsize=(8, 8))
-plt.pie(
-    matched_type_counts, labels=[None] * len(matched_type_labels), autopct=autopct_func, 
-    startangle=140, explode=explode, colors=pie_chart_colors, textprops={'fontsize': 10}
-)
-plt.title('Tipos de incidentes (matcheados)', fontsize=14)
-plt.legend(legend_labels, title="Incident Types")
-plt.tight_layout()
-
-plt.savefig('./pie_chart1.png')
-plt.close()
-# ------
-
 #%%
 # (STEP) Remove Empty Columns
 initial_cols = df.shape[1]
@@ -254,6 +222,9 @@ stats['Type Matches'] = (df['Matched Type'] != MISMATCH).sum()
 stats['Type Mismatches'] = (df['Matched Type'] == MISMATCH).sum()
 stats['Final Matched Types'] = df['Matched Type'].value_counts().to_dict()
 
+matched_type_counts = df['Matched Type'].value_counts()
+print(matched_type_counts)
+
 # (STEP) Save to CSV
 # Reorder columns to place 'Matched Country' first, and 'Matched Incident' second
 column_order = ['Matched Country', 'Matched Type'] + [col for col in df.columns if col not in ['Matched Country', 'Matched Type']]
@@ -273,10 +244,10 @@ print(f"Valores unicos luego de matchear: {stats['Countries Left After Matching'
 
 print()
 
-top_countries = df[df['Matched Country'] != 'NON-IDENTIFIABLE']['Matched Country'].value_counts().head(20)
+top_countries = df[df['Matched Country'] != 'NON-IDENTIFIABLE']['Matched Country'].value_counts().head(10)
 no_match_rows = df[df['Matched Country'] == 'NON-IDENTIFIABLE']
 
-print("Top 20 paises con mayores casos")
+print("Top 40 paises con mayores casos")
 print(top_countries)
 
 print()
@@ -294,6 +265,8 @@ print("Columnas iniciales:", stats['Initial Columns'])
 print("Columnas restantes (luego de eliminar vacias):", stats['Remaining Columns'])
 print("Total mismatch incidentes:", stats['Type Mismatches'])
 
+country_counts = df['Matched Country'].value_counts().reset_index()
+country_counts.columns = ['Country', 'EventCount']
 
 # Function to display percentages only for slices larger than 3%
 def autopct_func(pct):
@@ -335,7 +308,7 @@ plt.bar(matched_type_labels, matched_type_counts, color=bar_chart_colors)
 plt.title('Número de Incidentes por Tipo', fontsize=14)
 plt.xlabel('Tipo de Incidente', fontsize=12)
 plt.ylabel('Número de Incidentes', fontsize=12)
-plt.xticks(rotation=45, ha='right')  # Rotate x-axis labels for better visibility
+plt.xticks(rotation=45, ha='right')  # Rotate x-axis labels for better visibilitya
 
 # Optional: add count labels on top of the bars
 for i, count in enumerate(matched_type_counts):
@@ -425,19 +398,21 @@ plt.close()
 country_type_counts = df.groupby(['Matched Country', 'Matched Type']).size().unstack(fill_value=0)
 
 # Add a 'Number of Incidents' column with the total incidents per country
-country_type_counts['Number of Incidents'] = country_type_counts.sum(axis=1)
+country_type_counts['Incidentes'] = country_type_counts.sum(axis=1)
 
-# Reorder columns so 'Country' is first, 'Number of Incidents' is second, and incident types follow
+# Reorder columns so 'Country' is first, 'Incidentes' is second, and incident types follow
 country_type_counts = country_type_counts.reset_index()
-column_order = ['Matched Country', 'Number of Incidents'] + [col for col in country_type_counts.columns if col not in ['Matched Country', 'Number of Incidents']]
+column_order = ['Matched Country', 'Incidentes'] + [col for col in country_type_counts.columns if col not in ['Matched Country', 'Incidentes']]
 country_type_counts = country_type_counts[column_order]
 
 # Rename columns
 country_type_counts.rename(columns={'Matched Country': 'País'}, inplace=True)
 
 # Create a mapping for incident types to letters
-incident_types = [col for col in country_type_counts.columns if col not in ['País', 'Number of Incidents']]
+incident_types = [col for col in country_type_counts.columns if col not in ['País', 'Incidentes']]
 incident_type_mapping = {incident_types[i]: chr(65 + i) for i in range(len(incident_types))}
+
+print(incident_type_mapping)
 
 # Rename columns based on the mapping
 country_type_counts.rename(columns=incident_type_mapping, inplace=True)

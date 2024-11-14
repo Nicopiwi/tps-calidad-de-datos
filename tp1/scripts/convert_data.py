@@ -227,7 +227,7 @@ print(matched_type_counts)
 
 # (STEP) Save to CSV
 # Reorder columns to place 'Matched Country' first, and 'Matched Incident' second
-column_order = ['Matched Country', 'Matched Type'] + [col for col in df.columns if col not in ['Matched Country', 'Matched Type']]
+column_order = ['Matched Country', 'Matched Type', 'Incident Type (color)'] + [col for col in df.columns if col not in ['Matched Country', 'Matched Type', 'Incident Type (color)']]
 df = df[column_order]
 
 # Optionally, save the modified dataframe to a CSV

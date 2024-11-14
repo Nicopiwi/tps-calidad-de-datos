@@ -197,13 +197,13 @@ stats['Cases with valid countries'] = df['Country'].isin(country_dict).sum()/df.
 stats['Cases with islands'] = df['Country'].isin(country_dict).sum() / df.shape[0] * 100
 
 df['Matched Country'] = df['Country'].map(country_dict).fillna('NON-IDENTIFIABLE')
-df.loc[df['Country'].str.contains('/'), 'Matched Country'] = 'NON-IDENTIFIABLE'
+stats['Cases where Countries Not Matched'] = (~(df['Matched Country'] != 'NON-IDENTIFIABLE')).sum()
+df.loc[df['Matched Country'].str.contains('/'), 'Matched Country'] = 'NON-IDENTIFIABLE'
 
 stats['Countries'] = len(country_list)  # Number of Countries (unique countries from country_list)
 stats['Islands'] = len(country_dict) - len(country_list)  # Number of Islands (keys in country_dict)
 stats['Matched Countries/Islands'] = (df['Matched Country'] != 'NON-IDENTIFIABLE').sum()
 stats['Countries Left After Matching'] = df['Matched Country'].nunique()
-stats['Cases where Countries Not Matched'] = (~(df['Matched Country'] != 'NO MATCH')).sum()
 stats['Null Countries'] = (df['Country'] == '').sum()
 
 # (STEP) Match Types and Incident Types (Color) - Type Matching Stats

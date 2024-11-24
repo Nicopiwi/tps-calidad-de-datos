@@ -10,3 +10,5 @@ prueba
 *.png
 script_data.csv
 country_incidents_summary.csv
+
+tp2/*.csv

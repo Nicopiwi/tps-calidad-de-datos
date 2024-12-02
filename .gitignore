@@ -11,4 +11,5 @@ prueba
 script_data.csv
 country_incidents_summary.csv
 
+tp2/**/*.csv
 tp2/data/*.csv

@@ -13,3 +13,8 @@ country_incidents_summary.csv
 
 tp2/**/*.csv
 tp2/data/*.csv
+tp2/data/**/*.cpg
+tp2/data/**/*.dbf
+tp2/data/**/*.prj
+tp2/data/**/*.shp
+tp2/data/**/*.shx
